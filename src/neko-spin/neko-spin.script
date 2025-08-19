@@ -1,114 +1,182 @@
-## Author : Samuel Hierholzer (stolen from Aditya Shakya [adi1090x])
-## Github : @Melkor333
-## Reddit : @Melkor333
+// completely overengineered theme, didn't like anything around the block.
+// - cab404
 
-// Screen size
-screen.w = Window.GetWidth();
-screen.h = Window.GetHeight();
-screen.half.w = Window.GetWidth() / 2;
-screen.half.h = Window.GetHeight() / 2;
+state = "normal";
 
-// Question prompt
-question = null;
-answer = null;
+// ============ Utils
+// now we are playing with power (prototypes, yay!)
 
-// Message
-message = null;
+Object.set_image = fun(image) {
+    this.sprite.SetImage(image);
+    this.w = image.GetWidth();
+    this.h = image.GetHeight();
+};
 
-// Password prompt
-bullets = null;
-prompt = null;
-bullet.image = Image.Text("*", 1, 1, 1);
+Object.put = fun(x,y) {
+    this.x = x;
+    this.y = y;
+    this.sprite.SetPosition(x, y);
+};
 
-// Flow
-state.status = "play";
-state.time = 0.0;
+Object.below = fun(other, margin) {
+    if (margin == null) margin = 0;
+    this.y =other.y + other.h + margin;
+    this.sprite.SetY(this.y);
+};
 
-// Amount of images - 1 as we start with 0
-image_quantity = 48;
-image_prefix = "nixos-";
+Object.align_left = fun(other, margin) {
+    if (margin == null) margin = 0;
+    this.x = other.x + margin;
+    this.sprite.SetX(this.x);
+};
 
-//--------------------------------- Refresh (Logo animation) --------------------------
+Object |= fun(image) {
+    object = [] | global.Object;
+    object.sprite = Sprite(image);
+    object.w = image.GetWidth();
+    object.h = image.GetHeight();
+    object.put(0, 0);
+    return object;
+};
 
-# cycle through all images
-for (i = 0; i < image_quantity; i++)
-  images[i] = Image(image_prefix + i + ".png");
-animation_sprite = Sprite();
+// and then let's make an object manager!
+objstore.store = [];
+objstore.mark = 0;
+objstore.add = fun (p) {
+    for (i = 0; i <= this.mark+1; i++) {
+        if (!this.store[i]) {
+            this.store[i] = p;
+            this.mark = Math.Max(this.mark, i);
+            break;
+        }
+    }
+};
+objstore.update = fun() {
+    for (i = 0; i < this.mark+1; i++) {
+        if (this.store[i] && !this.store[i].dead) {
+            this.store[i].update();
+        }
+    }
+};
 
-# set image position
-animation_sprite.SetX(Window.GetX() + (Window.GetWidth() / 2 - images[0].GetWidth() / 2)); # Place images in the center
-animation_sprite.SetY(Window.GetY() + (Window.GetHeight() / 2 - images[0].GetHeight() / 2));
+// basic generators
+fun whitetext(text, size) {
+    return Image.Text(text, 0.7,0.1,0.1,1,"monospace " + size);
+}
+emptyimage = Image.Text("");
 
-# Set background color to white
+// An object counter
+objcounter = Object(emptyimage);
+objcounter.put(0,0);
+objcounter.update = fun() {
+    if (this.curcount != objstore.mark) {
+        this.curcount = objstore.mark;
+        this.set_image(Image.Text(objstore.mark,0.2,0.2,0.2));
+    }
+};
+
+objstore.add(objcounter);
+
+// ========== Animated logo
+NUMBER_OF_FRAMES = 7;
+
+logo = Object(Image("0.png"));
+for (i = 0; i < NUMBER_OF_FRAMES; i++)  { logo.frames[i] = Image( i + ".png"); }
+logo.put(0, 0);
+logo.frame = 0;
+logo.update = fun () {
+    this.set_image(global.logo.frames[global.logo.frame]);
+    this.frame += 1;
+    this.frame %= NUMBER_OF_FRAMES;
+};
+objstore.add(logo);
+
+fun labeltext() {
+    mode = Plymouth.GetMode();
+    if (mode == "boot") return "loading NixOS...";
+    if (mode == "shutdown") return "shutting down...";
+    if (mode == "reboot") return "reboot initiated...";
+    if (mode == "updates") return "system update in progress...";
+    if (mode == "system-upgrade") return "applying upgrades...";
+    if (mode == "firmware-upgrade") return "updating firmware...";
+    if (mode == "unknown") return "??? [REDACTED] in [DATA EXPUNGED] ???";
+}
+
+label = Object(whitetext(labeltext(), 20));
+label.below(logo);
+label.align_left(logo);
+
+// ========== Question callback
+
+// Jump on each entered character this many pixels
+Q_JUMP=5.0;
+q_offset = 0.0;
+
+fun update_quesion(q, a) {
+    if (global.state == "input") {
+        q_offset = Q_JUMP;
+    }
+    global.state = "input";
+
+    global.question.prompt = Object(whitetext(q, 10));
+    global.question.prompt.below(global.label, 4);
+    global.question.prompt.align_left(global.label);
+   
+    global.question.input = Object(whitetext(a, 10));
+    global.question.input.below(global.question.prompt, 4);
+    global.question.input.align_left(global.question.prompt);
+
+}
+
+local_q_updater.update = fun(){
+    global.q_offset /= 1.2;
+    global.question.input.below(global.question.prompt, q_offset);
+};
+objstore.add(local_q_updater);
+
+fun question_callback(prompt, entry) {
+    update_quesion(prompt, entry);
+}
+
+fun password_callback(prompt, bullet_count) {
+    local.q = "> ";
+    for (i = 0; i < bullet_count; i++) local.q += "*";
+    update_quesion(prompt, local.q);
+}
+
+
+# Set background color
 Window.SetBackgroundTopColor (1, 1, 1);
 Window.SetBackgroundBottomColor (1, 1, 1);
 
-progress = 0;
+Plymouth.SetDisplayQuestionFunction(question_callback);
+Plymouth.SetDisplayPasswordFunction(password_callback);
 
-fun refresh_callback ()
-  {
-    animation_sprite.SetImage(images[Math.Int(progress / 2) % image_quantity]);
-    progress++;
-  }
-  
-Plymouth.SetRefreshFunction (refresh_callback);
+// ========== Message
 
-//------------------------------------- Password prompt -------------------------------
-fun DisplayQuestionCallback(prompt, entry) {
-    question = null;
-    answer = null;
-
-    if (entry == "")
-        entry = "<answer>";
-
-    question.image = Image.Text(prompt, 1, 1, 1);
-    question.sprite = Sprite(question.image);
-    question.sprite.SetX(screen.half.w - question.image.GetWidth() / 2);
-    question.sprite.SetY(screen.h - 4 * question.image.GetHeight());
-
-    answer.image = Image.Text(entry, 1, 1, 1);
-    answer.sprite = Sprite(answer.image);
-    answer.sprite.SetX(screen.half.w - answer.image.GetWidth() / 2);
-    answer.sprite.SetY(screen.h - 2 * answer.image.GetHeight());
+fun message_callback(text) {
+    message = Object(whitetext(text, 12));
+    message.below(label, 4);
+    message.align_left(label,4);
 }
-Plymouth.SetDisplayQuestionFunction(DisplayQuestionCallback);
 
-//------------------------------------- Password prompt -------------------------------
-fun DisplayPasswordCallback(nil, bulletCount) {
-    state.status = "pause";
-    totalWidth = bulletCount * bullet.image.GetWidth();
-    startPos = screen.half.w - totalWidth / 2;
-
-    prompt.image = Image.Text("Enter Password", 1, 1, 1);
-    prompt.sprite = Sprite(prompt.image);
-    prompt.sprite.SetX(screen.half.w - prompt.image.GetWidth() / 2);
-    prompt.sprite.SetY(screen.h - 4 * prompt.image.GetHeight());
-
-    // Clear all bullets (user might hit backspace)
-    bullets = null;
-    for (i = 0; i < bulletCount; i++) {
-        bullets[i].sprite = Sprite(bullet.image);
-        bullets[i].sprite.SetX(startPos + i * bullet.image.GetWidth());
-        bullets[i].sprite.SetY(screen.h - 2 * bullet.image.GetHeight());
-    }
+fun hide_message_callback(text) {
+    message.set_image(emptyimage);
 }
-Plymouth.SetDisplayPasswordFunction(DisplayPasswordCallback);
 
-//--------------------------- Normal display (unset all text) ----------------------
-fun DisplayNormalCallback() {
-    state.status = "play";
-    bullets = null;
-    prompt = null;
-    message = null;
-    question = null;
-    answer = null;
-}
-Plymouth.SetDisplayNormalFunction(DisplayNormalCallback);
+Plymouth.SetMessageFunction(message_callback);
 
-//----------------------------------------- Message --------------------------------
-fun MessageCallback(text) {
-    message.image = Image.Text(text, 1, 1, 1);
-    message.sprite = Sprite(message.image);
-    message.sprite.SetPosition(screen.half.w - message.image.GetWidth() / 2, message.image.GetHeight());
+// Maintenance
+fun to_normal() {
+    global.state = "normal";
+    global.question = null;
+    global.message = null;
 }
-Plymouth.SetMessageFunction(MessageCallback);
+
+Plymouth.SetDisplayNormalFunction(to_normal);
+
+fun refresh_loop() {
+    objstore.update();
+}  
+
+Plymouth.SetRefreshFunction(refresh_loop);
