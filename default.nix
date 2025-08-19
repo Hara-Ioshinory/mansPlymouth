@@ -11,24 +11,34 @@ pkgs.stdenv.mkDerivation {
   # buildInputs = [ pkgs.ffmpeg ];
 
   buildPhase = ''
-    # Create theme
+    # Create theme directory
+    mkdir -p "${theme}"
+    
+    # Process plymouth file
     cp template.plymouth "${theme}/${theme}.plymouth"
-    sed -i 's/THEME/${theme}/g' "${theme}/${theme}.plymouth"
-    sed -i 's/generic/${theme}/g' "${theme}/${theme}.plymouth"
-    # Set the Background Color
-    # cp generic.script ${theme}
-    # sed -i 's/\(Window\.SetBackground[^ ]*\).*/\1 (${bgColor});/' ${theme}/generic.script
+    substituteInPlace "${theme}/${theme}.plymouth" \
+      --replace 'THEME' "${theme}" \
+      --replace 'generic' "${theme}"
+    
+    # Process script file (если нужно)
+    cp generic.script "${theme}/${theme}.script"
+    substituteInPlace "${theme}/${theme}.script" \
+      --replace 'Window.SetBackgroundTopColor (0.16, 0.00, 0.12);' \
+                'Window.SetBackgroundTopColor ${bgColor};'
   '';
 
   installPhase = ''
-    # Set the Background Color
-    # cp generic.script ${theme}
-    # sed -i 's/\(Window\.SetBackground[^ ]*\).*/\1 (${bgColor});/' ${theme}/generic.script
-
-    # Copy files
-    install -m 755 -vDt "$out/share/plymouth/themes/${theme}" "${theme}/${theme}."{plymouth,script}
-    install -m 644 -vDt "$out/share/plymouth/themes/${theme}" "${theme}/"*png
-    # Fix path
-    sed -i "s@\/usr\/@$out\/@" "$out/share/plymouth/themes/${theme}/${theme}.plymouth"
+    # Install all theme files
+    install -m 755 -D -t "$out/share/plymouth/themes/${theme}" \
+      "${theme}/${theme}.plymouth" \
+      "${theme}/${theme}.script"
+    
+    # Install PNG assets (если есть)
+    install -m 644 -D -t "$out/share/plymouth/themes/${theme}" \
+      "${theme}/"*.png
+    
+    # Fix paths in installed files
+    substituteInPlace "$out/share/plymouth/themes/${theme}/${theme}.plymouth" \
+      --replace "/usr/" "$out/"
   '';
 }
