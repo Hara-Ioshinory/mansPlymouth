@@ -82,7 +82,7 @@ NUMBER_OF_FRAMES = 7;
 
 logo = Object(Image("0.png"));
 for (i = 0; i < NUMBER_OF_FRAMES; i++)  { logo.frames[i] = Image( i + ".png"); }
-logo.put(20, 20);
+logo.put(0, 0);
 logo.frame = 0;
 logo.update = fun () {
     this.set_image(global.logo.frames[global.logo.frame]);
