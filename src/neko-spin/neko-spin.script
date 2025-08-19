@@ -1,76 +1,111 @@
-#!/bin/bash
+## stolen from Aditya Shakya [adi1090x]
 
-# Настройка логирования
-LOG_FILE="/tmp/plymouth-evil-nixos.log"
-exec > >(tee -a "$LOG_FILE") 2>&1
+// Screen size
+screen.w = Window.GetWidth();
+screen.h = Window.GetHeight();
+screen.half.w = Window.GetWidth() / 2;
+screen.half.h = Window.GetHeight() / 2;
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Начало выполнения скрипта Plymouth"
+// Question prompt
+question = null;
+answer = null;
 
-WIDTH=$(plymouth get-width)
-HEIGHT=$(plymouth get-height)
-echo "Размеры экрана: $WIDTH x $HEIGHT"
+// Message
+message = null;
 
-load_sprites() {
-    echo "Загрузка спрайтов..."
-    for i in {0..9}; do
-        if plymouth set-sprite "sprite$i" "sprite$i.png"; then
-            echo "Спрайт $i успешно загружен"
-        else
-            echo "Ошибка загрузки спрайта $i"
-        fi
-    done
+// Password prompt
+bullets = null;
+prompt = null;
+bullet.image = Image.Text("*", 1, 1, 1);
+
+// Flow
+state.status = "play";
+state.time = 0.0;
+
+// Amount of images - 1 as we start with 0
+image_quantity = 48;
+
+//--------------------------------- Refresh (Logo animation) --------------------------
+
+# cycle through all images
+for (i = 0; i < image_quantity; i++)
+  images[i] = Image(i + ".png");
+animation_sprite = Sprite();
+
+# set image position
+animation_sprite.SetX(Window.GetX() + (Window.GetWidth() / 2 - images[0].GetWidth() / 2)); # Place images in the center
+animation_sprite.SetY(Window.GetY() + (Window.GetHeight() / 2 - images[0].GetHeight() / 2));
+
+# Set background color to white
+Window.SetBackgroundTopColor (1, 1, 1);
+Window.SetBackgroundBottomColor (1, 1, 1);
+
+progress = 0;
+
+fun refresh_callback ()
+  {
+    animation_sprite.SetImage(images[Math.Int(progress / 2) % image_quantity]);
+    progress++;
+  }
+  
+Plymouth.SetRefreshFunction (refresh_callback);
+
+//------------------------------------- Password prompt -------------------------------
+fun DisplayQuestionCallback(prompt, entry) {
+    question = null;
+    answer = null;
+
+    if (entry == "")
+        entry = "<answer>";
+
+    question.image = Image.Text(prompt, 1, 1, 1);
+    question.sprite = Sprite(question.image);
+    question.sprite.SetX(screen.half.w - question.image.GetWidth() / 2);
+    question.sprite.SetY(screen.h - 4 * question.image.GetHeight());
+
+    answer.image = Image.Text(entry, 1, 1, 1);
+    answer.sprite = Sprite(answer.image);
+    answer.sprite.SetX(screen.half.w - answer.image.GetWidth() / 2);
+    answer.sprite.SetY(screen.h - 2 * answer.image.GetHeight());
 }
+Plymouth.SetDisplayQuestionFunction(DisplayQuestionCallback);
 
-place_sprites() {
-    echo "Размещение спрайтов..."
-    for i in {0..9}; do
-        plymouth show-sprite "sprite$i"
-        X=$(($RANDOM%$WIDTH))
-        Y=$(($RANDOM%$HEIGHT))
-        plymouth move-sprite "sprite$i" $X $Y
-        echo "Спрайт $i помещен в позицию ($X, $Y)"
-    done
+//------------------------------------- Password prompt -------------------------------
+fun DisplayPasswordCallback(nil, bulletCount) {
+    state.status = "pause";
+    totalWidth = bulletCount * bullet.image.GetWidth();
+    startPos = screen.half.w - totalWidth / 2;
+
+    prompt.image = Image.Text("Enter Password", 1, 1, 1);
+    prompt.sprite = Sprite(prompt.image);
+    prompt.sprite.SetX(screen.half.w - prompt.image.GetWidth() / 2);
+    prompt.sprite.SetY(screen.h - 4 * prompt.image.GetHeight());
+
+    // Clear all bullets (user might hit backspace)
+    bullets = null;
+    for (i = 0; i < bulletCount; i++) {
+        bullets[i].sprite = Sprite(bullet.image);
+        bullets[i].sprite.SetX(startPos + i * bullet.image.GetWidth());
+        bullets[i].sprite.SetY(screen.h - 2 * bullet.image.GetHeight());
+    }
 }
+Plymouth.SetDisplayPasswordFunction(DisplayPasswordCallback);
 
-animate() {
-    echo "Запуск анимации..."
-    while true; do
-        for i in {0..9}; do
-            X=$(($RANDOM%$WIDTH))
-            Y=$(($RANDOM%$HEIGHT))
-            plymouth move-sprite "sprite$i" $X $Y
-            echo "Перемещение спрайта $i в ($X, $Y)"
-        done
-        sleep 0.1
-    done
+//--------------------------- Normal display (unset all text) ----------------------
+fun DisplayNormalCallback() {
+    state.status = "play";
+    bullets = null;
+    prompt = null;
+    message = null;
+    question = null;
+    answer = null;
 }
+Plymouth.SetDisplayNormalFunction(DisplayNormalCallback);
 
-# Основная программа
-echo "Приостановка стандартного прогресса..."
-plymouth pause-progress
-
-load_sprites
-place_sprites
-
-echo "Запуск фоновой анимации..."
-animate &
-ANIMATE_PID=$!
-echo "PID анимации: $ANIMATE_PID"
-
-plymouth watch-for-vt-mode-change | while read EVENT; do
-    echo "Получено событие: $EVENT"
-    if [ "$EVENT" = "leave-vt-mode" ]; then
-        echo "Обнаружен переход в графический режим, завершение анимации..."
-        plymouth unpause-progress
-        kill $ANIMATE_PID
-        echo "Анимация остановлена"
-    fi
-done
-
-echo "Скрытие спрайтов..."
-for i in {0..9}; do
-    plymouth hide-sprite "sprite$i"
-    echo "Спрайт $i скрыт"
-done
-
-echo "Скрипт завершен"
+//----------------------------------------- Message --------------------------------
+fun MessageCallback(text) {
+    message.image = Image.Text(text, 1, 1, 1);
+    message.sprite = Sprite(message.image);
+    message.sprite.SetPosition(screen.half.w - message.image.GetWidth() / 2, message.image.GetHeight());
+}
+Plymouth.SetMessageFunction(MessageCallback);
