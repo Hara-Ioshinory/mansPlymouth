@@ -102,9 +102,9 @@ fun labeltext() {
     if (mode == "unknown") return "??? [REDACTED] in [DATA EXPUNGED] ???";
 }
 
-label = Object(whitetext(labeltext(), 20));
-label.below(logo);
-label.align_left(logo);
+// label = Object(whitetext(labeltext(), 20));
+// label.below(logo);
+// label.align_left(logo);
 
 // ========== Question callback
 
