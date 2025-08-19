@@ -11,7 +11,7 @@ in
   config.boot.plymouth = lib.mkIf cfg.mans-plymouth.enable {
     enable = true;
     themePackages = [ mans-plymouth ];
-    theme = cfg.mans-plymouth.theme;
+    # theme = cfg.mans-plymouth.theme;
   };
 
   options.mans-plymouth.duration = lib.mkOption {
