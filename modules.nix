@@ -2,7 +2,7 @@
 let
   cfg = config;
   mans-plymouth = pkgs.callPackage ./default.nix {
-    theme = cfg.mans-plymouth.theme;
+    # theme = cfg.mans-plymouth.theme;
   };
 in
 {
