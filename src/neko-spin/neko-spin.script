@@ -1,25 +1,76 @@
-screen.w = Window.GetWidth(0);
-screen.h = Window.GetHeight(0);
-screen.half.w = Window.GetWidth(0) / 2;
-screen.half.h = Window.GetHeight(0) / 2;
+#!/bin/bash
 
-//--------------------------------- Refresh (Logo animation) --------------------------
+# Настройка логирования
+LOG_FILE="/tmp/plymouth-evil-nixos.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
 
-# cycle through all images
-for (i = 0; i < 8; i++)
-  flyingman_image[i] = Image(i + ".png");
-flyingman_sprite = Sprite();
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Начало выполнения скрипта Plymouth"
 
-# set image position
-flyingman_sprite.SetX(Window.GetX() + (Window.GetWidth(0) / 2 - flyingman_image[0].GetWidth() / 2)); # Place images in the center
-flyingman_sprite.SetY(Window.GetY() + (Window.GetHeight(0) / 2 - flyingman_image[0].GetHeight() / 2));
+WIDTH=$(plymouth get-width)
+HEIGHT=$(plymouth get-height)
+echo "Размеры экрана: $WIDTH x $HEIGHT"
 
-progress = 0;
+load_sprites() {
+    echo "Загрузка спрайтов..."
+    for i in {0..9}; do
+        if plymouth set-sprite "sprite$i" "sprite$i.png"; then
+            echo "Спрайт $i успешно загружен"
+        else
+            echo "Ошибка загрузки спрайта $i"
+        fi
+    done
+}
 
-fun refresh_callback ()
-  {
-    flyingman_sprite.SetImage(flyingman_image[Math.Int(progress / 2) % 26]);
-    progress++;
-  }
+place_sprites() {
+    echo "Размещение спрайтов..."
+    for i in {0..9}; do
+        plymouth show-sprite "sprite$i"
+        X=$(($RANDOM%$WIDTH))
+        Y=$(($RANDOM%$HEIGHT))
+        plymouth move-sprite "sprite$i" $X $Y
+        echo "Спрайт $i помещен в позицию ($X, $Y)"
+    done
+}
 
-Plymouth.SetRefreshFunction (refresh_callback);
+animate() {
+    echo "Запуск анимации..."
+    while true; do
+        for i in {0..9}; do
+            X=$(($RANDOM%$WIDTH))
+            Y=$(($RANDOM%$HEIGHT))
+            plymouth move-sprite "sprite$i" $X $Y
+            echo "Перемещение спрайта $i в ($X, $Y)"
+        done
+        sleep 0.1
+    done
+}
+
+# Основная программа
+echo "Приостановка стандартного прогресса..."
+plymouth pause-progress
+
+load_sprites
+place_sprites
+
+echo "Запуск фоновой анимации..."
+animate &
+ANIMATE_PID=$!
+echo "PID анимации: $ANIMATE_PID"
+
+plymouth watch-for-vt-mode-change | while read EVENT; do
+    echo "Получено событие: $EVENT"
+    if [ "$EVENT" = "leave-vt-mode" ]; then
+        echo "Обнаружен переход в графический режим, завершение анимации..."
+        plymouth unpause-progress
+        kill $ANIMATE_PID
+        echo "Анимация остановлена"
+    fi
+done
+
+echo "Скрытие спрайтов..."
+for i in {0..9}; do
+    plymouth hide-sprite "sprite$i"
+    echo "Спрайт $i скрыт"
+done
+
+echo "Скрипт завершен"

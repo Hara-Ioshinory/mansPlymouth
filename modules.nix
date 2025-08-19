@@ -18,12 +18,4 @@ in
     type = lib.types.enum [ "neko-spin" ];
     default = "neko-spin";
   };
-
-  options.mans-plymouth.duration = lib.mkOption {
-    type = lib.types.float;
-    default = 0.0;
-  };
-  config.systemd.services.plymouth-quit = lib.mkIf (cfg.mans-plymouth.enable && cfg.mans-plymouth.duration > 0.0) {
-    preStart = "${pkgs.coreutils}/bin/sleep ${toString config.mans-plymouth.duration}";
-  };
 }
