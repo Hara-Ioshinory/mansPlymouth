@@ -4,7 +4,7 @@
 }:
 pkgs.stdenv.mkDerivation {
   pname = "mans-plymouth";
-  version = "0.1.0";
+  version = "0.1.4";
 
   src = ./src;
 
