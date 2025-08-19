@@ -1,4 +1,6 @@
-## stolen from Aditya Shakya [adi1090x]
+## Author : Samuel Hierholzer (stolen from Aditya Shakya [adi1090x])
+## Github : @Melkor333
+## Reddit : @Melkor333
 
 // Screen size
 screen.w = Window.GetWidth();
@@ -24,12 +26,13 @@ state.time = 0.0;
 
 // Amount of images - 1 as we start with 0
 image_quantity = 48;
+image_prefix = "nixos-";
 
 //--------------------------------- Refresh (Logo animation) --------------------------
 
 # cycle through all images
 for (i = 0; i < image_quantity; i++)
-  images[i] = Image(i + ".png");
+  images[i] = Image(image_prefix + i + ".png");
 animation_sprite = Sprite();
 
 # set image position
