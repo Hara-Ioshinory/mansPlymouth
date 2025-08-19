@@ -2,7 +2,7 @@
 let
   cfg = config;
   mans-plymouth = pkgs.callPackage ./default.nix {
-    # theme = cfg.mans-plymouth.theme;
+    theme = cfg.mans-plymouth.theme;
   };
 in
 {
@@ -11,7 +11,12 @@ in
   config.boot.plymouth = lib.mkIf cfg.mans-plymouth.enable {
     enable = true;
     themePackages = [ mans-plymouth ];
-    # theme = cfg.mans-plymouth.theme;
+    theme = cfg.mans-plymouth.theme;
+  };
+
+  options.nixos-boot.theme = lib.mkOption {
+    type = lib.types.enum [ "neko-spin" ];
+    default = "neko-spin";
   };
 
   options.mans-plymouth.duration = lib.mkOption {
