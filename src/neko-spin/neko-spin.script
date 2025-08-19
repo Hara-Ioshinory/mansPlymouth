@@ -7,7 +7,7 @@ info_text = "Screen: " + screen_width + "x" + screen_height;
 text_sprite = Sprite(Image.Text(info_text, 1, 1, 1, 1)); // Белый текст (RGB 1,1,1)
 
 // 3. Загружаем изображение (должно находиться в папке темы)
-image = Image("logo.png"); // Замените на ваше изображение
+image = Image("./1.png"); // Замените на ваше изображение
 image_width = image.GetWidth();
 image_height = image.GetHeight();
 
