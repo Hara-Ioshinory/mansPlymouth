@@ -14,7 +14,7 @@ in
     theme = cfg.mans-plymouth.theme;
   };
 
-  options.nixos-boot.theme = lib.mkOption {
+  options.mans-plymouth.theme = lib.mkOption {
     type = lib.types.enum [ "neko-spin" ];
     default = "neko-spin";
   };
