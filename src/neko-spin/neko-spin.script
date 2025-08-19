@@ -8,6 +8,7 @@ screen.half.h = Window.GetHeight() / 2;
 
 // Amount of images - 1 as we start with 0
 image_quantity = 7;
+images = null;
 
 //--------------------------------- Refresh (Logo animation) --------------------------
 
